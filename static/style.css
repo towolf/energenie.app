@@ -193,7 +193,7 @@ span.time {
 .powered .thebutton {
     background-color:#60ec29; 
     background-position: center center;
-    background-repeat: no-repeat; */
+    background-repeat: no-repeat;
     border:1px solid #45e20f;
     box-shadow:0px 4px 0px 0px #3eb60f, 0px 0px 0px 0px rgba(255, 255, 255, 0.6), 0px 6px 4px 0px rgba(0, 0, 0, 0.3), inset 0px 1px 0px 0px rgba(255, 255, 255, 0.2);
 }
