@@ -57,7 +57,7 @@ span.time {
     min-height:60px;
     min-width:190px
 }
-.thebutton-container.locked:before, .thebutton-container.unlocking:before, .thebutton-container.denied:after, .thebutton-container.locked:after, .thebutton-container.unlocking:after {
+.thebutton-container.locked:before, .thebutton-container.unlocking:before, .thebutton-container.locked:after, .thebutton-container.unlocking:after {
     cursor:pointer;
     text-align:center;
     width:100%;
@@ -78,9 +78,6 @@ span.time {
 .thebutton-container.locked:before, .thebutton-container.unlocking:before {
     content:'';
     display:block
-}
-.thebutton-container.denied.locked:after {
-    content:'connecting...'
 }
 .thebutton-container.active.locked:before {
     background-color:rgba(73, 73, 73, 0.4);

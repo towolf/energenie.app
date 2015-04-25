@@ -1,0 +1,210 @@
+diff -Nur a/src/main.c b/src/main.c
+--- a/src/main.c	2011-11-28 21:42:38.000000000 +0100
++++ b/src/main.c	2015-04-20 21:41:22.661399172 +0200
+@@ -661,7 +661,7 @@
+ 	        if(verbose) {
+             plannif_reset (&plan);
+ 	          usb_command_getplannif(udev,outlet,&plan);
+-	          plannif_display(&plan, 0, NULL);
++	          plannif_display(&plan, 0, numeric, NULL);
+           }
+ 
+           if (i<upto)
+@@ -674,7 +674,7 @@
+           struct plannif plan;
+           plannif_reset (&plan);
+ 	        usb_command_getplannif(udev,outlet,&plan);
+-          plannif_display(&plan, verbose, argv[0]);
++          plannif_display(&plan, verbose, numeric, argv[0]);
+ 	        break;
+       	case 'g':
+ 	        outlet=check_outlet_number(id, i);
+diff -Nur a/src/sispm_ctl.c b/src/sispm_ctl.c
+--- a/src/sispm_ctl.c	2011-11-28 21:42:38.000000000 +0100
++++ b/src/sispm_ctl.c	2015-04-23 21:07:50.397663929 +0200
+@@ -220,7 +220,7 @@
+ 
+ 
+ // displays a plannification structure in a human readable way
+-void plannif_display(const struct plannif* plan, int verbose, const char* progname) {
++void plannif_display(const struct plannif* plan, int verbose, int numeric, const char* progname) {
+   char datebuffer[80];
+   struct tm * timeinfo;
+   time_t date;
+@@ -228,78 +228,99 @@
+   ulong loop=0, lastActionTime=0;
+   char cmdline[1024] = "";
+ 
+-  printf("\nGet outlet %d status :\n", plan->socket);
+-
+   date = plan->timeStamp;
+-  timeinfo = localtime( &date );
+-  strftime (datebuffer,80,"%e-%b-%Y %H:%M:%S",timeinfo);
+-  printf("  programmed on : %s\n", datebuffer);
+-
+-  // action dates are on round minutes
+-  date = ((time_t)(date/60))*60;
+-
+-  // count loop time, as the sum of all but first events
+-  for (action=sizeof(plan->actions)/sizeof(struct plannifAction)-1 ; action>=0 && plan->actions[action].switchOn == -1; action--); // skip void entries
+-  if (action>=1 && plan->actions[action].timeForNext > 0) {  // we have a loop
+-    for ( ; action>=1; action--)
+-      loop += plan->actions[action].timeForNext;
+-  }
++  if (numeric) {
++      printf("{\"ts\": %ld, \"schedule\": [", date);
++      for (action = 0 ; action < sizeof(plan->actions) / sizeof(struct plannifAction) && (plan->actions[action].switchOn != -1 && (plan->actions[action].timeForNext > 0)); action++) {
++          if ((action+1 < sizeof(plan->actions)/sizeof(struct plannifAction)) && (plan->actions[action+1].switchOn != -1)) {
++              if (action) {
++                  printf(",\n\t\t\t\t");
++              }
++              printf("{\"sleep\": %6ld, ", plan->actions[action].timeForNext);
++              printf("\"power\": %5s }", (plan->actions[action+1].switchOn ? "true" : "false"));
++          } else {
++            if (action > 0) {
++                loop++;
++                printf("],\n\t\t   \"loop\": %6ld", plan->actions[action].timeForNext);
++            }
++          }
++      }
++      if (loop==0)
++          printf("]");
++      printf("},\n");
++  } else {
++      printf("\nGet outlet %d status :\n", plan->socket);
++      timeinfo = localtime( &date );
++      strftime (datebuffer,80,"%e-%b-%Y %H:%M:%S",timeinfo);
++      printf("  programmed on : %s\n", datebuffer);
+ 
+-  // compute last action time
+-  for (action=0 ; action+1<sizeof(plan->actions)/sizeof(struct plannifAction) && (plan->actions[action+1].switchOn != -1); action++)
+-    lastActionTime += plan->actions[action].timeForNext;
+-
+-  // if loop is enabled, do not display initial times, but next trigger times
+-  // so that at least last action is in the future
+-  if (loop > 0) {
+-    time_t now;
+-    ulong numOfLoops;
+-    time (&now);
+-    if (date+(lastActionTime*60) <= now) {
+-      numOfLoops = 1 + (now-(date+(lastActionTime*60))) / (loop*60);
+-      date += numOfLoops * (loop*60);
+-    }
+-  }
++      // action dates are on round minutes
++      date = ((time_t)(date/60))*60;
+ 
+-  // now read all filled rows, except the possibly last "stop" row
+-  for (action=0 ; action<sizeof(plan->actions)/sizeof(struct plannifAction) && (plan->actions[action].switchOn != -1) && (plan->actions[action].timeForNext > 0); action++) {
+-    date += 60 * plan->actions[action].timeForNext;
+-    if ((action+1 < sizeof(plan->actions)/sizeof(struct plannifAction)) && (plan->actions[action+1].switchOn != -1)) {
+-      timeinfo = localtime( &date );
+-      strftime (datebuffer,80,"%Y-%m-%d %H:%M",timeinfo);
+-      printf("  On %s ", datebuffer);
+-      printf("switch %s\n", (plan->actions[action+1].switchOn ? "on" : "off"));
+-      if (verbose)
+-        sprintf(cmdline+(strlen(cmdline)), "--Aat \"%s\" --Ado %s ", datebuffer, (plan->actions[action+1].switchOn ? "on" : "off"));
+-    }
+-    else {
+-      if (action > 0) {
+-        ulong loopdsp = loop;
+-        printf("  Loop every ");
+-        if (loopdsp >= 60*24*7) {
+-          printf("%li week(s) ", loopdsp / (60*24*7));
+-          loopdsp %= (60*24*7);
++      // count loop time, as the sum of all but first events
++      for (action=sizeof(plan->actions)/sizeof(struct plannifAction)-1 ; action>=0 && plan->actions[action].switchOn == -1; action--); // skip void entries
++      if (action>=1 && plan->actions[action].timeForNext > 0) {  // we have a loop
++        for ( ; action>=1; action--)
++          loop += plan->actions[action].timeForNext;
++      }
++
++      // compute last action time
++      for (action=0 ; action+1<sizeof(plan->actions)/sizeof(struct plannifAction) && (plan->actions[action+1].switchOn != -1); action++)
++        lastActionTime += plan->actions[action].timeForNext;
++      DEBUGVAR(lastActionTime);
++
++      // if loop is enabled, do not display initial times, but next trigger times
++      // so that at least last action is in the future
++      if (loop > 0) {
++        time_t now;
++        ulong numOfLoops;
++        time (&now);
++        if (date+(lastActionTime*60) <= now) {
++          numOfLoops = 1 + (now-(date+(lastActionTime*60))) / (loop*60);
++          date += numOfLoops * (loop*60);
+         }
+-        if (loopdsp >= 60*24) {
+-          printf("%li day(s) ", loopdsp / (60*24));
+-          loopdsp %= (60*24);
++      }
++
++      // now read all filled rows, except the possibly last "stop" row
++      for (action=0 ; action<sizeof(plan->actions)/sizeof(struct plannifAction) && (plan->actions[action].switchOn != -1) && (plan->actions[action].timeForNext > 0); action++) {
++        date += 60 * plan->actions[action].timeForNext;
++        if ((action+1 < sizeof(plan->actions)/sizeof(struct plannifAction)) && (plan->actions[action+1].switchOn != -1)) {
++          timeinfo = localtime( &date );
++          strftime (datebuffer,80,"%Y-%m-%d %H:%M",timeinfo);
++          printf("  On %s ", datebuffer);
++          printf("switch %s\n", (plan->actions[action+1].switchOn ? "on" : "off"));
++          if (verbose)
++            sprintf(cmdline+(strlen(cmdline)), "--Aat \"%s\" --Ado %s ", datebuffer, (plan->actions[action+1].switchOn ? "on" : "off"));
+         }
+-        if (loopdsp >= 60) {
+-          printf("%lih ", loopdsp / 60);
+-          loopdsp %= 60;
++        else {
++          if (action > 0) {
++            ulong loopdsp = loop;
++            printf("  Loop every ");
++            if (loopdsp >= 60*24*7) {
++              printf("%li week(s) ", loopdsp / (60*24*7));
++              loopdsp %= (60*24*7);
++            }
++            if (loopdsp >= 60*24) {
++              printf("%li day(s) ", loopdsp / (60*24));
++              loopdsp %= (60*24);
++            }
++            if (loopdsp >= 60) {
++              printf("%lih ", loopdsp / 60);
++              loopdsp %= 60;
++            }
++            if (loopdsp > 0)
++              printf("%limin", loopdsp);
++            printf("\n");
++            if (verbose)
++              sprintf(cmdline+(strlen(cmdline)), "--Aloop %li ", loop);
++          }
++          else
++            printf("  No programmed event.\n");
+         }
+-        if (loopdsp > 0)
+-          printf("%limin", loopdsp);
+-        printf("\n");
+-        if (verbose)
+-          sprintf(cmdline+(strlen(cmdline)), "--Aloop %li ", loop);
+       }
+-      else
+-        printf("  No programmed event.\n");
+-    }
+-  }
+-  if (verbose) {
+-    printf("  equivalent command line : %s -A%i %s\n", progname, plan->socket, cmdline);
++      if (verbose) {
++        printf("  equivalent command line : %s -A%i %s\n", progname, plan->socket, cmdline);
++      }
+   }
+ }
+ 
+diff -Nur a/src/sispm_ctl.h b/src/sispm_ctl.h
+--- a/src/sispm_ctl.h	2011-11-28 21:42:38.000000000 +0100
++++ b/src/sispm_ctl.h	2015-04-20 21:35:02.163844552 +0200
+@@ -75,7 +75,7 @@
+ void plannif_reset (struct plannif* plan);
+ void usb_command_getplannif(usb_dev_handle *udev, int socket, struct plannif* plan);
+ void usb_command_setplannif(usb_dev_handle *udev, struct plannif* plan);
+-void plannif_display(const struct plannif* plan, int verbose, const char* progname);
++void plannif_display(const struct plannif* plan, int verbose, int numeric, const char* progname);
+ 
+ usb_dev_handle*get_handle(struct usb_device*dev);
+ int usb_command(usb_dev_handle *udev, int b1, int b2, int return_value_expected );
