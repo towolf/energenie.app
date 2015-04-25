@@ -163,9 +163,7 @@ window.onload = function() {
             });
 
             buttons[i].addEventListener('click', function(t) {
-
                 t.preventDefault(), t.stopPropagation();
-
                 submit({'action': 'toggle', 'outlet': i + 1}, e);
             });
         }
