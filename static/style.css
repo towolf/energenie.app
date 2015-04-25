@@ -4,25 +4,44 @@ body {
 table {
     width: 100%;
 }
-.thebutton-wrap h1 {
-    text-align:left;
-    line-height:30px;
-    margin:0;
-    font-size:24px;
-    padding:0
-}
 .active .thebutton-form {
     background-image: radial-gradient(100% 100% at 50% 60%, #fff 19%, rgba(255, 255, 255, 0) 55%);
     box-shadow:0px 3px 10px 0px rgba(0, 0, 0, 0.05)
 }
 .thebutton-form {
     font-family: Georgia;
+    position: relative;
     background:#FAFAFA;
     border:1px solid #E0E0E0;
     color:#4A4A4A;
     display:inline-block;
     padding:20px;
     margin:5px;
+}
+.thebutton-form h1 {
+    text-align:left;
+    line-height:30px;
+    margin:0;
+    font-size:24px;
+    padding:0
+}
+p.schedule {
+    position: absolute;
+    text-align: right;
+    top: 14px;
+    right: 25px; 
+    width: 350px;
+    font-size: 10px;
+    color: #4a4a4a;
+}
+span.schedoff {
+    color: #b6170f;
+}
+span.schedon {
+    color: #3eb60f;
+}
+span.time {
+    border-bottom: 1px dotted #a0a0a0;
 }
 .thebutton-container {
     position:relative;

@@ -31,6 +31,25 @@ class SisPM:
         else:
             return status
 
+    def get_schedule(self, outlet='all'):
+        # only works with patched version of sispmctl
+        if outlet != 'all':
+            try:
+                outlet = str(int(outlet))
+            except TypeError, v:
+                raise SisPMError('Invalid outlet: ' + str(v))
+
+        command = [self.binary, '-qnD', self.serial, '-a', outlet]
+
+        try:
+            result = subprocess.check_output(command, stderr=subprocess.STDOUT)
+        except subprocess.CalledProcessError, v:
+            raise SisPMError('Querying outlets failed: ' + v.output)
+        if outlet != 'all':
+            return result[:-2]
+        else:
+            return '[\n' + result[:-2] + '\n]'
+
     def off(self, outlet):
         self.set(self.OFF, outlet)
         return False

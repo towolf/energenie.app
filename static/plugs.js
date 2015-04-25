@@ -26,7 +26,20 @@ var pollStatus = function() {
     if (Array.isArray(r.response)) {
         updatePlugs(r.response);
     } else {
-        debugger;
+        console.warn('While polling status:', r.response);
+    }
+  });
+};
+
+var pollSchedules = function() {
+  XHR.get('/gembird', {'action': 'get_schedule'}, function(x, r) {
+        updateSchedules(r.response);
+  });
+  XHR.poll(5, '/gembird', {'action': 'get_schedule'}, function(x, r) {
+    if (Array.isArray(r.response)) {
+        updateSchedules(r.response);
+    } else {
+        console.warn('While polling schedules:', r.response);
     }
   });
 };
@@ -43,6 +56,47 @@ var updatePlugs = function(state) {
             e.classList.remove('powered');
         } else {
             debugger;
+        }
+    }
+};
+
+var updateSchedules = function(data) {
+    var schedules = document.getElementsByClassName('schedule');
+    for (var i = 0; i < schedules.length; i++) {
+        var s = schedules[i];
+        var string = '';
+        var d = data[i];
+        var t = 0;
+        var ts = moment.unix(d['ts']);
+        var now = moment();
+        ts.seconds(0);
+
+        moment.relativeTimeThreshold('s', 5); 
+
+        if (d.schedule.length == 0) {
+            s.innerText = '';
+        } else {
+            if (d.loop) {
+                var first = d.schedule[0].sleep * 60000;
+                for (var j = 1; j < d.schedule.length; j++) {
+                    t += d.schedule[j].sleep * 60000;
+                }
+                var period = d.loop * 60000 + t; 
+                if (ts.clone().add(first + t).isBefore(now)) {
+                     var count = Math.ceil((now - (ts + first + t)) / period);
+                     ts.add(count * period);
+                }
+            }
+            string = 'Scheduled to power';
+            for (var j = 0; j < d.schedule.length; j++) {
+                ts.add(d.schedule[j].sleep, 'minutes');
+                string += ' <span class=sched' + (d.schedule[j].power ? 'on>on' : 'off>off') + '</span> '
+                string += '<span class=time title="' + ts.calendar() + '">' + ts.fromNow() + '</span>, ';
+            }
+            if (d.loop) {
+                string += ' and loop after ' + moment.duration(period).humanize() + ' (' + moment.duration(period).toString() + ')';
+            }
+            s.innerHTML = string;
         }
     }
 };
@@ -118,5 +172,6 @@ window.onload = function() {
     })();
 
     pollStatus();
+    pollSchedules();
 
 };

@@ -23,13 +23,13 @@ class gembird:
         else:
             del input['action']
 
-        if action not in ('get', 'on', 'off', 'toggle'):
+        if action not in ('get', 'get_schedule', 'on', 'off', 'toggle'):
             return json.dumps({'response': 'unknown action', 'input': input})
         else:
             try:
                 response = getattr(gb, action)(**input)
             except SisPMError, v:
-                response = 'action failed to execute: ' + str(v) + str(os.getuid())
+                response = str(v)
                 return json.dumps({'response': response, 'action': action, 'input': input})
             except AttributeError, v:
                 response = 'action failed to execute: ' + str(v)
@@ -37,7 +37,10 @@ class gembird:
             except TypeError, v:
                 response = 'Incorrect args: ' + str(v)
                 return json.dumps({'response': response, 'action': action, 'input': input})
-            return json.dumps({'response': response, 'action': action, 'input': input})
+            if action == 'get_schedule':
+                return '{"response": ' + response + '}'
+            else:
+                return json.dumps({'response': response, 'action': action, 'input': input})
 
 wsgi_app = web.application(urls, globals()).wsgifunc()
 
